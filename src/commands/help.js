@@ -30,9 +30,9 @@
 
 import { findCommand, getByCategory, getCategoryNames } from '../plugins/registry.js';
 import { config }                                        from '../config/index.js';
-import { sendInteractive, quickReply, singleSelect }      from '../services/rich-messages.js';
-import { getHeroImage }                                  from '../services/ui/HeroManager.js';
-import { BRAND_FOOTER }                                  from '../services/brand.js';
+import { sendInteractive, quickReply, sendList } from '../services/rich-messages.js';
+import { getHeroImage }                         from '../services/ui/HeroManager.js';
+import { BRAND_FOOTER }                         from '../services/brand.js';
 
 export const meta = {
   name:        'help',
@@ -181,44 +181,55 @@ export async function handler(ctx) {
     `⚙️ ᴜᴛɪʟs  ·  👤 sᴜᴘᴘᴏʀᴛ\n\n` +
     `\`${p}allmenu\` ꜰᴏʀ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs`;
 
-  const menuButtons = [
-    quickReply('🧠 AI',           `${p}ai`),
-    quickReply('📥 Downloader',   `${p}dl`),
-    quickReply('📋 All Commands', `${p}allmenu`),
-  ];
-
   const heroImage   = getHeroImage();
   const offerFields = buildOfferFields();
 
+  // ── Step 1: Hero image + caption (no NativeFlow — buttons don't fire on this client) ──
   try {
     await sock.sendMessage(
       jid,
       {
-        image:      heroImage,
-        caption:    fullCaption,
-        nativeFlow: menuButtons,
-        footer:     BRAND_FOOTER,
+        image:   heroImage,
+        caption: fullCaption,
+        footer:  BRAND_FOOTER,
         ...(offerFields ?? {}),
       },
       rawMessage ? { quoted: rawMessage } : {},
     );
   } catch {
-    const lines = [
-      `╭──────────────────╮`,
-      `  🌸 ʏᴜᴢᴜᴋɪ ᴀɪ  ${version}`,
-      `╰──────────────────╯`,
-      '',
-      getGreeting(pushName),
-      '',
-      `🧠 ᴀɪ  ·  📥 ᴍᴇᴅɪᴀ  ·  🔍 sᴇᴀʀᴄʜ`,
-      `⚙️ ᴜᴛɪʟs  ·  👤 sᴜᴘᴘᴏʀᴛ`,
-      '',
-      `\`${p}allmenu\` ꜰᴏʀ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs`,
-    ];
     await sock.sendMessage(
       jid,
-      { text: lines.join('\n') },
+      { text: fullCaption },
       rawMessage ? { quoted: rawMessage } : {},
     );
   }
+
+  // ── Step 2: List message rows — tappable, works on all clients ────────────
+  // Row IDs start with the bot prefix so resolveBody() routes them as commands.
+  await sendList(sock, jid, {
+    title:       '🌸 Quick Navigation',
+    description: `Tap a row to jump straight in, or type \`${p}allmenu\` for the full list.`,
+    buttonText:  '⚡ Quick Start',
+    footer:      BRAND_FOOTER,
+    sections: [
+      {
+        title: '🚀 Popular',
+        rows: [
+          { id: `${p}ai`,      title: '🧠 AI Chat',       description: 'Chat, image-gen & more'     },
+          { id: `${p}dl`,      title: '📥 Downloader',     description: 'YouTube, TikTok, Instagram' },
+          { id: `${p}imagine`, title: '🎨 Image Generate', description: 'AI image from a prompt'     },
+          { id: `${p}gemini`,  title: '✨ Gemini',          description: 'Google Gemini AI'           },
+        ],
+      },
+      {
+        title: '📋 Browse',
+        rows: [
+          { id: `${p}allmenu`, title: '📋 All Commands',   description: 'Full interactive command list' },
+          { id: `${p}joke`,    title: '😄 Joke',           description: 'Random jokes & fun facts'  },
+          { id: `${p}meme`,    title: '😂 Meme',           description: 'Reddit meme carousel'      },
+          { id: `${p}info`,    title: 'ℹ️ Bot Info',        description: 'Version, uptime & stats'   },
+        ],
+      },
+    ],
+  });
 }
