@@ -1,0 +1,6 @@
+{
+  "name": "Yuzuki AI Dashboard",
+  "description": "Admin dashboard and control panel for Yuzuki AI WhatsApp Multi-Device Bot.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
