@@ -181,7 +181,9 @@ export async function handler(ctx) {
     `⚙️ ᴜᴛɪʟs  ·  👤 sᴜᴘᴘᴏʀᴛ\n\n` +
     `\`${p}allmenu\` ꜰᴏʀ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs`;
 
-  const heroImage   = getHeroImage();
+  const heroRaw     = getHeroImage();
+  // Unwrap to what Baileys sendMessage accepts: Buffer directly or { url: string }
+  const heroImage   = heroRaw.data instanceof Buffer ? heroRaw.data : { url: heroRaw.url };
   const offerFields = buildOfferFields();
 
   // ── Step 1: Hero image + caption (no NativeFlow — buttons don't fire on this client) ──
