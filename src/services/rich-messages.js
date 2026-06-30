@@ -446,28 +446,60 @@ async function _sendTextWithAdReply(sock, jid, text, quoted) {
   export async function sendList(sock, jid, opts, quoted) {
     const { title, description, buttonText, footer, sections } = opts;
 
-    // raw: true → bypasses cv3inx else-catch-all → prepareWAMessageMedia not called
-    const content = {
-      raw: true,
-      listMessage: {
-        title, description, buttonText,
-        footerText: footer ?? '',
-        listType:   1, // SINGLE_SELECT
-        sections,
-      },
-    };
-
     log.debug({ jid, title, sections: sections?.length }, '[rich-messages] sendList payload');
 
+    // ── Proto path (cv3inx compatible) ───────────────────────────────────────
+    // raw: true with plain listMessage is silently dropped by cv3inx because
+    // generateWAMessageContent doesn't recognise 'listMessage' as a valid key
+    // after the raw bypass. We must use generateWAMessageFromContent + relayMessage
+    // (the same approach as sendInteractive / sendCarousel) so the proto is
+    // built correctly and the list actually delivers.
     try {
-      await sock.sendMessage(
-        jid,
-        content,
-        quoted ? { quoted } : {},
+      const { proto, generateWAMessageFromContent } = getBaileys();
+
+      const protoSections = (sections ?? []).map(s =>
+        proto.Message.ListMessage.Section.create({
+          title: s.title ?? '',
+          rows:  (s.rows ?? []).map(r =>
+            proto.Message.ListMessage.Row.create({
+              rowId:       r.id    ?? r.rowId ?? '',
+              title:       r.title ?? '',
+              description: r.description ?? '',
+            })
+          ),
+        })
       );
+
+      const msg = generateWAMessageFromContent(
+        jid,
+        {
+          listMessage: proto.Message.ListMessage.create({
+            title:       title       ?? '',
+            description: description ?? '',
+            buttonText:  buttonText  ?? 'View',
+            footerText:  footer      ?? '',
+            listType:    proto.Message.ListMessage.ListType.SINGLE_SELECT,
+            sections:    protoSections,
+          }),
+        },
+        { userJid: sock.user?.id, quoted },
+      );
+
+      await sock.relayMessage(jid, msg.message, { messageId: msg.key.id });
     } catch (e) {
-      log.error(`[rich-messages] sendList failed: ${e.message}`);
-      throw e;
+      log.error(`[rich-messages] sendList proto path failed (${e.message}) — falling back to text`);
+      // Fallback: plain text list so the user always gets a response
+      const lines = [
+        `*${title ?? 'Commands'}*`,
+        description ?? '',
+        '',
+        ...(sections ?? []).flatMap(s => [
+          s.title ? `_${s.title}_` : '',
+          ...(s.rows ?? []).map(r => `• ${r.title}${r.description ? ` — ${r.description}` : ''}`),
+          '',
+        ]),
+      ];
+      await sock.sendMessage(jid, { text: lines.join('\n').trim() }, quoted ? { quoted } : {});
     }
   }
 
