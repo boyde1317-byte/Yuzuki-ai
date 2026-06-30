@@ -39,6 +39,7 @@ const BUTTON_CONTENT_TYPES = new Set([
   'interactiveResponseMessage',
   'nativeFlowResponseMessage',
   'buttonsResponseMessage',
+  'listResponseMessage',       // list row taps (sendList / sendList rows)
 ]);
 
 // ── Antilink patterns ─────────────────────────────────────────────────────────
