@@ -172,6 +172,45 @@ export function getRandomHeroImage(category = 'menu') {
 }
 
 /**
+ * resolveHeroImageBuffer(category?) → Promise<{ data: Buffer }>
+ *
+ * Async version of getRandomHeroImage that ALWAYS returns { data: Buffer }.
+ * When the sync resolver returns { url }, it downloads the URL to a buffer
+ * so callers can always pass contextImage.data (not contextImage.url) to
+ * sendInteractive — ensuring the ExternalAdReplyInfo thumbnail is embedded
+ * as base64 in the proto and renders inline on all WhatsApp clients
+ * (no download button, no broken thumbnail).
+ *
+ * Use this in any command handler that needs a guaranteed Buffer:
+ *   const heroImg = await resolveHeroImageBuffer('menu');
+ *   sendInteractive(sock, jid, { contextImage: heroImg, ... });
+ *
+ * @param {string} [category='menu']
+ * @returns {Promise<{ data: Buffer }>}
+ */
+export async function resolveHeroImageBuffer(category = 'menu') {
+  const result = getRandomHeroImage(category);
+  if (result.data) return result;
+
+  // URL fallback — download to buffer so it renders as inline thumbnail
+  try {
+    const res = await fetch(result.url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Yuzuki-AI/2.0)' },
+      signal:  AbortSignal.timeout(12_000),
+      redirect: 'follow',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ab = await res.arrayBuffer();
+    if (!ab.byteLength) throw new Error('empty body');
+    log.debug(`[hero] ${category} → URL downloaded to buffer (${ab.byteLength} bytes)`);
+    return { data: Buffer.from(ab) };
+  } catch (e) {
+    log.warn(`[hero] resolveHeroImageBuffer failed for "${category}": ${e.message} — returning url fallback`);
+    return result;
+  }
+}
+
+/**
  * getCategoryList() → string[]
  *
  * Returns all known category names. Useful for tooling / admin commands.
