@@ -182,16 +182,9 @@ export async function handler(ctx) {
     `\`${p}allmenu\` ꜰᴏʀ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs`;
 
   const menuButtons = [
-    singleSelect('📋 Quick Start', [
-      {
-        title: '',
-        rows: [
-          { header: '🧠 AI Chat',     title: `${p}ai`,      description: 'Chat, image‑gen & more', id: `${p}ai`      },
-          { header: '📋 All Commands', title: `${p}allmenu`, description: 'Browse every command',   id: `${p}allmenu` },
-          { header: '📥 Downloader',   title: `${p}dl`,      description: 'Save media from links',  id: `${p}dl`      },
-        ],
-      },
-    ]),
+    quickReply('🧠 AI',           `${p}ai`),
+    quickReply('📥 Downloader',   `${p}dl`),
+    quickReply('📋 All Commands', `${p}allmenu`),
   ];
 
   const heroImage   = getHeroImage();
