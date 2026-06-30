@@ -367,11 +367,17 @@ async function _sendTextWithAdReply(sock, jid, text, quoted) {
       return sendInteractive(sock, jid, opts, quoted);
     }
 
+    // Unwrap { data: Buffer } → Buffer  and  { url: string } → { url: string }
+    // sock.sendMessage only accepts Buffer or { url } directly, not our wrapper shape.
+    const imagePayload = image?.data instanceof Buffer
+      ? image.data
+      : image?.url ? { url: image.url } : image;
+
     try {
       await sock.sendMessage(
         jid,
         {
-          image,
+          image:      imagePayload,
           caption:    body,
           nativeFlow: btns,
           ...(footer ? { footer } : {}),
