@@ -175,6 +175,29 @@ function extractParams(ctx) {
     return { id: brm.selectedButtonId, display_text: brm.selectedDisplayText ?? brm.selectedButtonId };
   }
 
+  // ── Source 5: listResponseMessage (list row tap) ────────────────────────
+  // When a user taps a row in a sendList / listMessage, WhatsApp sends back a
+  // listResponseMessage with singleSelectReply.selectedRowId = the row's id.
+  // The serializer already extracts this as ctx.body (line ~96 in serializer),
+  // but we also handle it here so the routing works even if ctx.body was not set.
+  const lrm = msg?.listResponseMessage;
+  if (lrm) {
+    const rowId = lrm.singleSelectReply?.selectedRowId ?? lrm.title ?? null;
+    if (rowId) {
+      log.debug(`[button] params via listResponseMessage.selectedRowId: "${rowId}"`);
+      return { id: rowId, display_text: lrm.title ?? rowId };
+    }
+  }
+
+  // ── Source 6: ctx.body fast-path for listResponseMessage ───────────────
+  // The serializer sets ctx.body = selectedRowId for listResponseMessage.
+  // If the body starts with the command prefix, treat it as a direct command.
+  if (ctx.contentType === 'listResponseMessage' && ctx.body?.trim()) {
+    const body = ctx.body.trim();
+    log.debug(`[button] listResponse via ctx.body fast-path: "${body.slice(0, 60)}"`);
+    return { id: body, display_text: body };
+  }
+
   log.warn(
     `[button] no params found — contentType=${ctx.contentType}` +
     ` body=${JSON.stringify(ctx.body?.slice(0, 80) ?? null)}` +
