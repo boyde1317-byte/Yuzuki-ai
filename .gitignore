@@ -1,0 +1,20 @@
+# Session — contains WhatsApp auth credentials, never commit
+session/
+
+# SQLite store
+database.sqlite
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.backup-*
+
+# Runtime dirs
+temp/
+logs/
+
+# Dependencies
+node_modules/
+
+# Misc
+.env
+*.log
